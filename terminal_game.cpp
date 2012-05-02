@@ -11,6 +11,7 @@ Text based game that needs to:
 
 #include <iostream>
 #include <curses.h>
+#include <ncurses.h>
 #include <string.h>
 #include <algorithm>
 #include <vector>
@@ -20,6 +21,34 @@ using namespace std;
 
 
 // GAME VARIABLES
+typedef unsigned short int num;
+#define PLAYER "8_8"
+#define LIVES 5
+#define FPS 20
+#define PPF 50
+#define SECOND 1000000
+
+num PLAYER_SIZE;
+num rows;
+num cols;
+
+struct Position {
+    num x;
+    num y;
+};
+
+struct Ply {
+    struct Position pos;
+    num lives;
+};
+
+struct Ply ply;
+
+int in;
+num u;
+
+num i;
+num x;
 
 // A row of the chararacters in the 'rain' contains the letters in between the newline chars
 string rainRow9 = "|######  ############|";
@@ -55,7 +84,7 @@ void printStrVector()
 	string row_str;
 	const char *row;
 
-	// Print every string in the array, each time skiping over to anothe line
+	// Print every string in the array, each time skiping over to another line
 	for (it=myvector.begin(); it != myvector.end(); it++)
 	{
 		row_str = *it;
@@ -65,6 +94,57 @@ void printStrVector()
 		curLine++;
 		move(curLine,INDENTATION);
 	}
+}
+
+void quit(const char* seq) {
+    clear();
+    curs_set(2);
+    endwin();
+    printf(seq);
+    exit(0);
+}
+
+inline void draw(struct Position obj, const char* art) {
+    mvprintw(obj.y, obj.x, art);
+}
+
+void draw_all() {
+    clear();
+
+/* Draws counter for lives on screen */
+    mvprintw(rows-1, 0, "Lives: %u", ply.lives); 
+    draw(ply.pos, PLAYER);
+    
+    refresh();
+}
+
+//Controls the Player, q- quit, p- pause
+void run_ply() {
+    for (x=0; x < PPF; ++x) {
+        in = getch();
+        usleep((SECOND/FPS) / PPF);
+
+        if (in == ERR) {
+            continue;
+        }
+
+        if (in == KEY_LEFT || in == 'a' || in == 'h') {
+            ply.pos.x -= (ply.pos.x == 0) ? 0 : 1;
+        } else if (in == KEY_UP || in == 'w' || in == 'j') {
+            ply.pos.y -= (ply.pos.y == 0) ? 0 : 1;
+        } else if (in == KEY_RIGHT || in == 'd' || in == 'k') {
+            ply.pos.x += (ply.pos.x == cols-PLAYER_SIZE) ? 0 : 1;
+        } else if (in == KEY_DOWN || in == 's' || in == 'l') {
+            ply.pos.y += (ply.pos.y == rows-1) ? 0 : 1;
+        } else if (in == 'q' || in == KEY_EXIT) {
+            quit("Exited\n");
+        } else if (in == 'p') {
+			nodelay(stdscr,FALSE);
+            mvprintw(0, 0, "~Paused~");
+			getch();
+			nodelay(stdscr,TRUE);
+        }
+    }
 }
 
 // Shifts contents of the string array to the right once
@@ -123,6 +203,26 @@ int main(int argc, char* argv[]) {
 			refresh();
 			usleep(300*1000);
 		}
+//Main part used for game
+    initscr();
+    cbreak();
+    nodelay(stdscr, TRUE);
+    noecho();
+    curs_set(0);
+    keypad(stdscr, TRUE);
+    getmaxyx(stdscr, rows, cols);
+
+    srand(time(NULL));
+    PLAYER_SIZE = strlen(PLAYER);
+
+    ply.lives = LIVES;
+
+    while (1) {
+        draw_all();
+
+        run_ply();
+
+        draw_all();
 			
 	}
 
@@ -133,5 +233,5 @@ int main(int argc, char* argv[]) {
 	
 
 	return 0;
-
+	}
 }
